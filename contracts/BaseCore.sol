@@ -6,12 +6,13 @@ import "./libs/ReentrancyGuard.sol";
 import "./libs/TransferHelper.sol";
 import "./libs/RevertReasonParser.sol";
 import "./libs/SafeMath.sol";
+import "./libs/Ownable.sol";
 import "./interfaces/IERC20.sol";
 import "./interfaces/IUniswapV2.sol";
 import "./interfaces/IUniswapV3Pool.sol";
 
 
-contract BaseCore is Pausable, ReentrancyGuard {
+contract BaseCore is Ownable, Pausable, ReentrancyGuard {
 
     using SafeMath for uint256;
 
@@ -101,7 +102,7 @@ contract BaseCore is Pausable, ReentrancyGuard {
     event ChangeAggregateBridge(address newBridge);
     event TransitSwapped(address indexed srcToken, address indexed dstToken, address indexed dstReceiver, uint256 amount, uint256 returnAmount, uint256 toChainID, string channel);
     
-    constructor() {
+    constructor() Ownable(msg.sender) {
         DOMAIN_SEPARATOR = keccak256(
             abi.encode(
                 keccak256("EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)"),
@@ -142,18 +143,49 @@ contract BaseCore is Pausable, ReentrancyGuard {
         );
     }
 
-    function updateFee(bool[] memory isAggregate, uint256[] memory rate) internal {
+    function changeFee(bool[] memory isAggregate, uint256[] memory newRate) external onlyExecutor {
         for (uint i; i < isAggregate.length; i++) {
             if (isAggregate[i]) {
-                _aggregate_fee = rate[i];
+                _aggregate_fee = newRate[i];
             } else {
-                _cross_fee = rate[i];
+                _cross_fee = newRate[i];
             }
-            emit ChangeFeeRate(isAggregate[i], rate[i]);
+            emit ChangeFeeRate(isAggregate[i], newRate[i]);
         }
     }
 
-    function updateUniswapV3FactoryAllowed(uint[] memory poolIndex, address[] memory factories, bytes[] memory initCodeHash) internal {
+    function changeTransitProxy(address aggregator, address signer) external onlyExecutor {
+        if (aggregator != address(0)) {
+            _aggregate_bridge = aggregator;
+            emit ChangeAggregateBridge(aggregator);
+        }
+        if (signer != address(0)) {
+            address preSigner = _signer;
+            _signer = signer;
+            emit ChangeSigner(preSigner, signer);
+        }
+    }
+
+    function changeAllowed(address[] calldata crossCallers, address[] calldata wrappedTokens) public onlyExecutor {
+        if(crossCallers.length != 0){
+            for (uint i; i < crossCallers.length; i++) {
+                _cross_caller_allowed[crossCallers[i]] = !_cross_caller_allowed[crossCallers[i]];
+            }
+            emit ChangeCrossCallerAllowed(crossCallers);
+        }
+        if(wrappedTokens.length != 0) {
+            bool[] memory newAllowed = new bool[](wrappedTokens.length);
+            for (uint index; index < wrappedTokens.length; index++) {
+                _wrapped_allowed[wrappedTokens[index]] = !_wrapped_allowed[wrappedTokens[index]];
+                newAllowed[index] = _wrapped_allowed[wrappedTokens[index]];
+            }
+            emit ChangeWrappedAllowed(wrappedTokens, newAllowed);
+        }
+    }
+
+    function changeUniswapV3FactoryAllowed(uint[] calldata poolIndex, address[] calldata factories, bytes[] calldata initCodeHash) public onlyExecutor {
+        require(poolIndex.length == initCodeHash.length, "invalid data");
+        require(factories.length == initCodeHash.length, "invalid data");
         uint len = factories.length;
         for (uint i; i < len; i++) {
             _uniswapV3_factory_allowed[poolIndex[i]] = UniswapV3Pool(factories[i],initCodeHash[i]);
@@ -161,22 +193,12 @@ contract BaseCore is Pausable, ReentrancyGuard {
         emit ChangeV3FactoryAllowed(poolIndex, factories, initCodeHash);
     }
 
-    function updateSigner(address signer) internal {
-        address preSigner = _signer;
-        _signer = signer;
-        emit ChangeSigner(preSigner, signer);
-    }
-
-    function updateAggregateBridge(address newAggregateBridge) internal {
-        _aggregate_bridge = newAggregateBridge;
-        emit ChangeAggregateBridge(newAggregateBridge);
-    }
-
-    function updateCrossCallerAllowed(address[] calldata callers) internal {
-        for (uint i; i < callers.length; i++) {
-            _cross_caller_allowed[callers[i]] = !_cross_caller_allowed[callers[i]];
+    function changePause(bool paused) external onlyExecutor {
+        if (paused) {
+            _pause();
+        } else {
+            _unpause();
         }
-        emit ChangeCrossCallerAllowed(callers);
     }
 
     function transitAggregateBridge() external view returns (address) {
@@ -201,15 +223,6 @@ contract BaseCore is Pausable, ReentrancyGuard {
 
     function uniswapV3FactoryAllowed(uint poolIndex) external view returns (UniswapV3Pool memory pool) {
         return _uniswapV3_factory_allowed[poolIndex];
-    }
-
-    function updateWrappedAllowed(address[] calldata wrappedTokens) internal {
-        bool[] memory newAllowed = new bool[](wrappedTokens.length);
-        for (uint index; index < wrappedTokens.length; index++) {
-            _wrapped_allowed[wrappedTokens[index]] = !_wrapped_allowed[wrappedTokens[index]];
-            newAllowed[index] = _wrapped_allowed[wrappedTokens[index]];
-        }
-        emit ChangeWrappedAllowed(wrappedTokens, newAllowed);
     }
 
     function verifySignature(uint256 amount, uint256 fee, bytes calldata signature) internal view returns (bool) {
