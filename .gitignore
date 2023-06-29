@@ -1,4 +1,5 @@
 .idea/
+artifacts/
 # Logs
 logs
 *.log

@@ -22,12 +22,12 @@ contract AggregateRouter is BaseCore {
         require(desc.amount > 0, "amount should be greater than 0");
         require(desc.dstReceiver != address(0), "receiver should be not address(0)");
         require(desc.minReturnAmount > 0, "minReturnAmount should be greater than 0");
-        require(this.wrappedAllowed(desc.wrappedToken), "invalid wrapped address");
+        require(_wrapped_allowed[desc.wrappedToken], "invalid wrapped address");
 
         uint256 actualAmountIn = calculateTradeFee(true, desc.amount, desc.fee, desc.signature);
         uint256 swapAmount;
         uint256 toBeforeBalance;
-        address bridgeAddress = this.transitAggregateBridge();
+        address bridgeAddress = _aggregate_bridge;
         if (TransferHelper.isETH(desc.srcToken)) {
             require(msg.value == desc.amount, "invalid msg.value");
             swapAmount = actualAmountIn;

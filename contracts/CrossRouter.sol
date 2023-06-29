@@ -12,14 +12,14 @@ contract CrossRouter is BaseCore {
     function cross(CrossDescription calldata desc) external payable nonReentrant whenNotPaused {
         require(desc.calls.length > 0, "data should be not zero");
         require(desc.amount > 0, "amount should be greater than 0");
-        require(this.transitCrossCallerAllowed(desc.caller), "invalid caller");
+        require(_cross_caller_allowed[desc.caller], "invalid caller");
         uint256 swapAmount;
         uint256 amountIn = calculateTradeFee(false, desc.amount, desc.fee, desc.signature);
         if (TransferHelper.isETH(desc.srcToken)) {
             require(msg.value == desc.amount, "invalid msg.value");
             swapAmount = amountIn;
             if (desc.wrappedToken != address(0)) {
-                require(this.wrappedAllowed(desc.wrappedToken), "Invalid wrapped address");
+                require(_wrapped_allowed[desc.wrappedToken], "Invalid wrapped address");
                 TransferHelper.safeDeposit(desc.wrappedToken, swapAmount);
                 TransferHelper.safeApprove(desc.wrappedToken, desc.caller, swapAmount);
                 swapAmount = 0;

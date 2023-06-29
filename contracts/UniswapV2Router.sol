@@ -13,7 +13,7 @@ contract UniswapV2Router is BaseCore {
 
     function _beforeSwap(ExactInputV2SwapParams calldata exactInput, bool supportingFeeOn) internal returns (bool isToETH, uint256 actualAmountIn, address[] memory paths, uint256 thisAddressBeforeBalance, uint256 toBeforeBalance) {
         require(exactInput.path.length == exactInput.pool.length + 1, "Invalid path");
-        require(this.wrappedAllowed(exactInput.wrappedToken), "Invalid wrapped address");
+        require(_wrapped_allowed[exactInput.wrappedToken], "Invalid wrapped address");
         actualAmountIn = calculateTradeFee(true, exactInput.amount, exactInput.fee, exactInput.signature);
         //检查第一个或最后一个是否为ETH
         address[] memory path = exactInput.path;

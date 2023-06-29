@@ -79,17 +79,17 @@ contract BaseCore is Ownable, Pausable, ReentrancyGuard {
         bytes initCodeHash;
     }
 
-    uint256 private _aggregate_fee;
-    uint256 private _cross_fee;
-    address private _aggregate_bridge;
-    address private _signer;
+    uint256 internal _aggregate_fee;
+    uint256 internal _cross_fee;
+    address internal _aggregate_bridge;
+    address internal _fee_signer;
     bytes32 public DOMAIN_SEPARATOR;
     //whitelist cross's caller
-    mapping(address => bool) private _cross_caller_allowed;
+    mapping(address => bool) internal _cross_caller_allowed;
     //whitelist wrapped
-    mapping(address => bool) private _wrapped_allowed;
+    mapping(address => bool) internal _wrapped_allowed;
     //whitelist uniswap v3 factory
-    mapping(uint => UniswapV3Pool) private _uniswapV3_factory_allowed;
+    mapping(uint => UniswapV3Pool) internal _uniswapV3_factory_allowed;
     bytes32 public constant CHECKFEE_TYPEHASH = keccak256("CheckFee(address payer,uint256 amount,uint256 fee)");
 
     event Receipt(address from, uint256 amount);
@@ -145,6 +145,7 @@ contract BaseCore is Ownable, Pausable, ReentrancyGuard {
 
     function changeFee(bool[] memory isAggregate, uint256[] memory newRate) external onlyExecutor {
         for (uint i; i < isAggregate.length; i++) {
+            require(newRate[i] >= 0 && newRate[i] <= 1000, "fee rate is:0-1000");
             if (isAggregate[i]) {
                 _aggregate_fee = newRate[i];
             } else {
@@ -160,8 +161,8 @@ contract BaseCore is Ownable, Pausable, ReentrancyGuard {
             emit ChangeAggregateBridge(aggregator);
         }
         if (signer != address(0)) {
-            address preSigner = _signer;
-            _signer = signer;
+            address preSigner = _fee_signer;
+            _fee_signer = signer;
             emit ChangeSigner(preSigner, signer);
         }
     }
@@ -201,28 +202,19 @@ contract BaseCore is Ownable, Pausable, ReentrancyGuard {
         }
     }
 
-    function transitAggregateBridge() external view returns (address) {
-        return _aggregate_bridge;
-    }
-
-    function transitSinger() external view returns (address) {
-        return _signer;
+    function transitProxyAddress() external view returns (address bridgeProxy, address feeSigner) {
+        bridgeProxy = _aggregate_bridge;
+        feeSigner = _fee_signer;
     }
 
     function transitFee() external view returns (uint256, uint256) {
         return (_aggregate_fee, _cross_fee);
     }
 
-    function transitCrossCallerAllowed(address caller) external view returns (bool) {
-        return _cross_caller_allowed[caller];
-    }
-
-    function wrappedAllowed(address wrapped) external view returns (bool) {
-        return _wrapped_allowed[wrapped];
-    }
-
-    function uniswapV3FactoryAllowed(uint poolIndex) external view returns (UniswapV3Pool memory pool) {
-        return _uniswapV3_factory_allowed[poolIndex];
+    function transitAllowedQuery(address crossCaller, address wrappedToken, uint256 poolIndex) external view returns (bool isCrossCallerAllowed, bool isWrappedAllowed, UniswapV3Pool memory pool) {
+        isCrossCallerAllowed = _cross_caller_allowed[crossCaller];
+        isWrappedAllowed = _wrapped_allowed[wrappedToken];
+        pool = _uniswapV3_factory_allowed[poolIndex];
     }
 
     function verifySignature(uint256 amount, uint256 fee, bytes calldata signature) internal view returns (bool) {
@@ -235,7 +227,7 @@ contract BaseCore is Ownable, Pausable, ReentrancyGuard {
         );
         (uint8 v, bytes32 r, bytes32 s) = splitSignature(signature);
         address recovered = ecrecover(digest, v, r, s);
-        return recovered == _signer;
+        return recovered == _fee_signer;
     }
 
     function splitSignature(bytes memory _signature) internal pure returns (uint8 v, bytes32 r, bytes32 s) {

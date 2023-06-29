@@ -13,11 +13,27 @@ contract UniswapV3Router is BaseCore {
 
     constructor() {}
 
+    function pancakeV3SwapCallback(
+        int256 amount0Delta,
+        int256 amount1Delta,
+        bytes calldata _data
+    ) external {
+        _executeCallback(amount0Delta, amount1Delta, _data);
+    }
+
     function uniswapV3SwapCallback(
         int256 amount0Delta,
         int256 amount1Delta,
         bytes calldata _data
     ) external {
+        _executeCallback(amount0Delta, amount1Delta, _data);
+    }
+
+    function _executeCallback(
+        int256 amount0Delta,
+        int256 amount1Delta,
+        bytes calldata _data
+    ) internal {
         require(amount0Delta > 0 || amount1Delta > 0, "M0 or M1"); // swaps entirely within 0-liquidity regions are not supported
         (uint256 pool, bytes memory tokenInAndPoolSalt) = abi.decode(_data, (uint256, bytes));
         (address tokenIn, bytes32 poolSalt) = abi.decode(tokenInAndPoolSalt, (address, bytes32));
@@ -41,7 +57,7 @@ contract UniswapV3Router is BaseCore {
     function exactInputV3Swap(ExactInputV3SwapParams calldata params) external payable nonReentrant whenNotPaused returns (uint256 returnAmount) {
         require(params.pools.length > 0, "Empty pools");
         require(params.deadline >= block.timestamp, "Expired");
-        require(this.wrappedAllowed(params.wrappedToken), "Invalid wrapped address");
+        require(_wrapped_allowed[params.wrappedToken], "Invalid wrapped address");
         address tokenIn = params.srcToken;
         address tokenOut = params.dstToken;
         uint256 actualAmountIn = calculateTradeFee(true, params.amount, params.fee, params.signature);
@@ -57,7 +73,7 @@ contract UniswapV3Router is BaseCore {
 
         if (TransferHelper.isETH(params.dstToken)) {
             tokenOut = params.wrappedToken;
-            toBeforeBalance = params.dstReceiver.balance;
+            toBeforeBalance = IERC20(params.wrappedToken).balanceOf(address(this));
             isToETH = true;
         } else {
             toBeforeBalance = IERC20(params.dstToken).balanceOf(params.dstReceiver);
@@ -90,7 +106,7 @@ contract UniswapV3Router is BaseCore {
         }
 
         if (isToETH) {
-            returnAmount = params.dstReceiver.balance.sub(toBeforeBalance);
+            returnAmount = IERC20(params.wrappedToken).balanceOf(address(this)).sub(toBeforeBalance);
             require(returnAmount >= params.minReturnAmount, "Too little received");
             TransferHelper.safeWithdraw(params.wrappedToken, returnAmount);
             TransferHelper.safeTransferETH(params.dstReceiver, returnAmount);
@@ -155,7 +171,7 @@ contract UniswapV3Router is BaseCore {
 
     function _verifyCallback(uint256 pool, bytes32 poolSalt, address caller) internal view {
         uint poolDigit = pool >> 248 & 0xf;
-        UniswapV3Pool memory v3Pool = this.uniswapV3FactoryAllowed(poolDigit);
+        UniswapV3Pool memory v3Pool = _uniswapV3_factory_allowed[poolDigit];
         require(v3Pool.factory != address(0), "Callback bad pool indexed");
         address calcPool = address(
             uint160(
