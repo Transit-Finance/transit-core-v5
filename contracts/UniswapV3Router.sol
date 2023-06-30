@@ -13,6 +13,11 @@ contract UniswapV3Router is BaseCore {
 
     constructor() {}
 
+    fallback() external {
+        (int256 amount0Delta, int256 amount1Delta, bytes memory _data) = abi.decode(msg.data[4:], (int256,int256,bytes));
+        _executeCallback(amount0Delta, amount1Delta, _data);
+    }
+
     function pancakeV3SwapCallback(
         int256 amount0Delta,
         int256 amount1Delta,
@@ -32,7 +37,7 @@ contract UniswapV3Router is BaseCore {
     function _executeCallback(
         int256 amount0Delta,
         int256 amount1Delta,
-        bytes calldata _data
+        bytes memory _data
     ) internal {
         require(amount0Delta > 0 || amount1Delta > 0, "M0 or M1"); // swaps entirely within 0-liquidity regions are not supported
         (uint256 pool, bytes memory tokenInAndPoolSalt) = abi.decode(_data, (uint256, bytes));
