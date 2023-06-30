@@ -52,9 +52,9 @@ contract UniswapV3Router is BaseCore {
         TransferHelper.safeTransfer(tokenIn, msg.sender, amountToPay);
     }
 
-    function exactInputV3SwapAndGasUsed(ExactInputV3SwapParams calldata params) external payable nonReentrant whenNotPaused returns (uint256 returnAmount, uint256 gasUsed) {
+    function exactInputV3SwapAndGasUsed(ExactInputV3SwapParams calldata params) external payable returns (uint256 returnAmount, uint256 gasUsed) {
         uint256 gasLeftBefore = gasleft();
-        returnAmount = this.exactInputV3Swap(params);
+        returnAmount = this.exactInputV3Swap{value: msg.value}(params);
         gasUsed = gasLeftBefore - gasleft();
 
     }

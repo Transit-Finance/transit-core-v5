@@ -11,9 +11,9 @@ contract AggregateRouter is BaseCore {
 
     }
 
-    function aggregateAndGasUsed(TransitSwapDescription calldata desc, CallbytesDescription calldata callbytesDesc) external payable nonReentrant whenNotPaused returns (uint256 returnAmount, uint256 gasUsed) {
+    function aggregateAndGasUsed(TransitSwapDescription calldata desc, CallbytesDescription calldata callbytesDesc) external payable returns (uint256 returnAmount, uint256 gasUsed) {
         uint256 gasLeftBefore = gasleft();
-        returnAmount = this.aggregate(desc, callbytesDesc);
+        returnAmount = this.aggregate{value: msg.value}(desc, callbytesDesc);
         gasUsed = gasLeftBefore - gasleft();
     }
 

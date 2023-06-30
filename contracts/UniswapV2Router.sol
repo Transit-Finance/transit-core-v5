@@ -43,9 +43,9 @@ contract UniswapV2Router is BaseCore {
         paths = path;
     }
 
-    function exactInputV2SwapAndGasUsed(ExactInputV2SwapParams calldata exactInput, uint256 deadline) external payable nonReentrant whenNotPaused returns (uint256 returnAmount, uint256 gasUsed) {
+    function exactInputV2SwapAndGasUsed(ExactInputV2SwapParams calldata exactInput, uint256 deadline) external payable returns (uint256 returnAmount, uint256 gasUsed) {
         uint256 gasLeftBefore = gasleft();
-        returnAmount = this.exactInputV2Swap(exactInput, deadline);
+        returnAmount = this.exactInputV2Swap{value: msg.value}(exactInput, deadline);
         gasUsed = gasLeftBefore - gasleft();
     }
 
