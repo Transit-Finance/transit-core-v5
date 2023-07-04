@@ -54,12 +54,16 @@ contract UniswapV3Router is BaseCore {
 
     function exactInputV3SwapAndGasUsed(ExactInputV3SwapParams calldata params) external payable returns (uint256 returnAmount, uint256 gasUsed) {
         uint256 gasLeftBefore = gasleft();
-        returnAmount = this.exactInputV3Swap{value: msg.value}(params);
+        returnAmount = _exactInputV3Swap(params);
         gasUsed = gasLeftBefore - gasleft();
 
     }
 
-    function exactInputV3Swap(ExactInputV3SwapParams calldata params) external payable nonReentrant whenNotPaused returns (uint256 returnAmount) {
+    function exactInputV3Swap(ExactInputV3SwapParams calldata params) external payable returns (uint256 returnAmount) {
+        returnAmount = _exactInputV3Swap(params);
+    }
+
+    function _exactInputV3Swap(ExactInputV3SwapParams calldata params) internal nonReentrant whenNotPaused returns (uint256 returnAmount) {
         require(params.pools.length > 0, "Empty pools");
         require(params.deadline >= block.timestamp, "Expired");
         require(_wrapped_allowed[params.wrappedToken], "Invalid wrapped address");
