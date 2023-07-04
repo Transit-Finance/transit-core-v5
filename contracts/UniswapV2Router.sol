@@ -45,15 +45,15 @@ contract UniswapV2Router is BaseCore {
 
     function exactInputV2SwapAndGasUsed(ExactInputV2SwapParams calldata exactInput, uint256 deadline) external payable returns (uint256 returnAmount, uint256 gasUsed) {
         uint256 gasLeftBefore = gasleft();
-        returnAmount = _exactInputV2Swap(exactInput, deadline);
+        returnAmount = _executeV2Swap(exactInput, deadline);
         gasUsed = gasLeftBefore - gasleft();
     }
 
     function exactInputV2Swap(ExactInputV2SwapParams calldata exactInput, uint256 deadline) external payable returns (uint256 returnAmount) {
-        returnAmount = _exactInputV2Swap(exactInput, deadline);
+        returnAmount = _executeV2Swap(exactInput, deadline);
     }
 
-    function _exactInputV2Swap(ExactInputV2SwapParams calldata exactInput, uint256 deadline) internal nonReentrant whenNotPaused returns (uint256 returnAmount) {
+    function _executeV2Swap(ExactInputV2SwapParams calldata exactInput, uint256 deadline) internal nonReentrant whenNotPaused returns (uint256 returnAmount) {
         require(deadline >= block.timestamp, "Expired");
         
         bool supportingFeeOn = exactInput.router >> 248 & 0xf == 1;
