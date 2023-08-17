@@ -103,6 +103,7 @@ contract TransitAggregateBridgeV5 is Ownable {
             }
             if (!isApproved) {
                 TransferHelper.safeApprove(desc.srcToken, approveAddress, type(uint).max);
+                _approves[desc.srcToken][approveAddress] = true;
             }
             if (!TransferHelper.isETH(desc.srcToken)) {
                 require(aggregateDesc.amounts[index] == 0, "TransitAggregateBridgeV5: invalid call.value");
