@@ -3,9 +3,15 @@ Core smart contracts of TransitSwap v5
 
 # Deployed Contract
 
+[Ethereum Mainnet](https://etherscan.io/address/0x00000047bb99ea4d791bb749d970de71ee0b1a34)
+
+[BNB Smart Chain Mainnet](https://bscscan.com/address/0x00000047bb99ea4d791bb749d970de71ee0b1a34)
+
 [Polygon Mainnet](https://polygonscan.com/address/0x00000047bb99ea4d791bb749d970de71ee0b1a34)
 
 [Linea Mainnet](https://lineascan.build/address/0x00000047bb99ea4d791bb749d970de71ee0b1a34)
+
+[opBNB Mainnet](https://mainnet.opbnbscan.com/address/0x00000047bb99ea4d791bb749d970de71ee0b1a34)
 
 # Audit Report
 
