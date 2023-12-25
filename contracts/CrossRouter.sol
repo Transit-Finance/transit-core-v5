@@ -27,6 +27,7 @@ contract CrossRouter is BaseCore {
         } else {
             TransferHelper.safeTransferFrom(desc.srcToken, msg.sender, address(this), desc.amount);
             TransferHelper.safeApprove(desc.srcToken, desc.caller, actualAmountIn);
+            swapAmount = msg.value;
         }
 
         {
