@@ -27,6 +27,7 @@ contract CrossRouter is BaseCore {
         } else {
             TransferHelper.safeTransferFrom(desc.srcToken, msg.sender, address(this), desc.amount);
             TransferHelper.safeApprove(desc.srcToken, desc.caller, actualAmountIn);
+            swapAmount = msg.value;
         }
 
         {
@@ -34,6 +35,7 @@ contract CrossRouter is BaseCore {
             if (!success) {
                 revert(RevertReasonParser.parse(result, "TransitCrossV5:"));
             }
+            TransferHelper.safeApprove(desc.srcToken, desc.caller, 0);
         }
 
         _emitTransit(desc.srcToken, desc.dstToken, desc.dstReceiver, desc.amount, 0, desc.toChain, desc.channel);

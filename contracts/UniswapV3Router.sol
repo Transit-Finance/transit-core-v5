@@ -176,6 +176,7 @@ contract UniswapV3Router is BaseCore {
             nextTokenIn = token0;
             tokenInAndPoolSalt = abi.encode(token1, poolSalt);
         }
+        _verifyCallback(pool, poolSalt, address(uint160(pool)));
     }
 
     function _verifyCallback(uint256 pool, bytes32 poolSalt, address caller) internal view {
