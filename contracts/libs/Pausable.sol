@@ -16,20 +16,21 @@ abstract contract Pausable {
     /**
      * @dev Emitted when the pause is triggered by `account`.
      */
-    event Paused(address account);
+    event Paused(address account, PausedFlag flag);
 
     /**
      * @dev Emitted when the pause is lifted by `account`.
      */
-    event Unpaused(address account);
+    event Unpaused(address account, PausedFlag flag);
 
-    bool private _paused;
+    mapping(PausedFlag => bool) private _paused;
+
+    enum PausedFlag {executeAggregate, executeV2Swap, executeV3Swap, cross}
 
     /**
      * @dev Initializes the contract in unpaused state.
      */
     constructor() {
-        _paused = false;
     }
 
     /**
@@ -39,8 +40,8 @@ abstract contract Pausable {
      *
      * - The contract must not be paused.
      */
-    modifier whenNotPaused() {
-        _requireNotPaused();
+    modifier whenNotPaused(PausedFlag flag) {
+        _requireNotPaused(flag);
         _;
     }
 
@@ -51,30 +52,30 @@ abstract contract Pausable {
      *
      * - The contract must be paused.
      */
-    modifier whenPaused() {
-        _requirePaused();
+    modifier whenPaused(PausedFlag flag) {
+        _requirePaused(flag);
         _;
     }
 
     /**
      * @dev Returns true if the contract is paused, and false otherwise.
      */
-    function paused() public view virtual returns (bool) {
-        return _paused;
+    function paused(PausedFlag flag) public view virtual returns (bool) {
+        return _paused[flag];
     }
 
     /**
      * @dev Throws if the contract is paused.
      */
-    function _requireNotPaused() internal view virtual {
-        require(!paused(), "Pausable: paused");
+    function _requireNotPaused(PausedFlag flag) internal view virtual {
+        require(!paused(flag), "Pausable: paused");
     }
 
     /**
      * @dev Throws if the contract is not paused.
      */
-    function _requirePaused() internal view virtual {
-        require(paused(), "Pausable: not paused");
+    function _requirePaused(PausedFlag flag) internal view virtual {
+        require(paused(flag), "Pausable: not paused");
     }
 
     /**
@@ -84,9 +85,9 @@ abstract contract Pausable {
      *
      * - The contract must not be paused.
      */
-    function _pause() internal virtual whenNotPaused {
-        _paused = true;
-        emit Paused(msg.sender);
+    function _pause(PausedFlag flag) internal virtual whenNotPaused(flag) {
+        _paused[flag] = true;
+        emit Paused(msg.sender, flag);
     }
 
     /**
@@ -96,8 +97,15 @@ abstract contract Pausable {
      *
      * - The contract must be paused.
      */
-    function _unpause() internal virtual whenPaused {
-        _paused = false;
-        emit Unpaused(msg.sender);
+    function _unpause(PausedFlag flag) internal virtual whenPaused(flag) {
+        _paused[flag] = false;
+        emit Unpaused(msg.sender, flag);
+    }
+
+    function pausedOverAll() public view virtual returns (bool executeAggregate, bool executeV2Swap, bool executeV3Swap, bool cross) {
+        executeAggregate = _paused[PausedFlag.executeAggregate];
+        executeV2Swap = _paused[PausedFlag.executeV2Swap];
+        executeV3Swap = _paused[PausedFlag.executeV3Swap];
+        cross = _paused[PausedFlag.cross];
     }
 }

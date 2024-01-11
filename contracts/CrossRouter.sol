@@ -9,7 +9,7 @@ contract CrossRouter is BaseCore {
 
     constructor() {}
 
-    function cross(CrossDescription calldata desc) external payable nonReentrant whenNotPaused {
+    function cross(CrossDescription calldata desc) external payable nonReentrant whenNotPaused(PausedFlag.cross) {
         require(desc.calls.length > 0, "data should be not zero");
         require(desc.amount > 0, "amount should be greater than 0");
         require(_cross_caller_allowed[desc.caller], "invalid caller");

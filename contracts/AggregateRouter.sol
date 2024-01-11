@@ -11,17 +11,17 @@ contract AggregateRouter is BaseCore {
 
     }
 
-    function aggregateAndGasUsed(TransitSwapDescription calldata desc, CallbytesDescription calldata callbytesDesc) external payable returns (uint256 returnAmount, uint256 gasUsed) {
+    function aggregateAndGasUsed(TransitSwapDescription calldata desc, CallbytesDescription calldata callbytesDesc) external payable whenNotPaused(PausedFlag.executeAggregate) returns (uint256 returnAmount, uint256 gasUsed) {
         uint256 gasLeftBefore = gasleft();
         returnAmount = _executeAggregate(desc, callbytesDesc);
         gasUsed = gasLeftBefore - gasleft();
     }
 
-    function aggregate(TransitSwapDescription calldata desc, CallbytesDescription calldata callbytesDesc) external payable returns (uint256 returnAmount) {
+    function aggregate(TransitSwapDescription calldata desc, CallbytesDescription calldata callbytesDesc) external payable whenNotPaused(PausedFlag.executeAggregate) returns (uint256 returnAmount) {
         returnAmount = _executeAggregate(desc, callbytesDesc);
     }
 
-    function _executeAggregate(TransitSwapDescription calldata desc, CallbytesDescription calldata callbytesDesc) internal nonReentrant whenNotPaused returns (uint256 returnAmount) {
+    function _executeAggregate(TransitSwapDescription calldata desc, CallbytesDescription calldata callbytesDesc) internal nonReentrant returns (uint256 returnAmount) {
         require(callbytesDesc.calldatas.length > 0, "data should be not zero");
         require(desc.amount > 0, "amount should be greater than 0");
         require(desc.dstReceiver != address(0), "receiver should be not address(0)");

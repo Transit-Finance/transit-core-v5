@@ -201,11 +201,14 @@ contract BaseCore is Ownable, Pausable, ReentrancyGuard {
         emit ChangeV3FactoryAllowed(poolIndex, factories, initCodeHash);
     }
 
-    function changePause(bool paused) external onlyExecutor {
-        if (paused) {
-            _pause();
-        } else {
-            _unpause();
+    function changePause(bool paused, PausedFlag[] calldata flags) external onlyExecutor {
+        uint len = flags.length;
+        for (uint i; i < len; i++) {
+            if (paused) {
+                _pause(flags[i]);
+            } else {
+                _unpause(flags[i]);
+            }
         }
     }
 
