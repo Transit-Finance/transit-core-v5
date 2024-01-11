@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.0;
+pragma solidity =0.8.20;
 
 import "./libs/Ownable.sol";
 import "./libs/TransferHelper.sol";
@@ -38,6 +38,7 @@ contract TransitAggregateBridgeV5 is Ownable {
     event ChangeAllowedEnabled(bool _allowed_enabled);
     event ChangeTransitRouter(address indexed previousRouter, address indexed newRouter);
     event Withdraw(address indexed token, address indexed executor, address indexed recipient, uint amount);
+    event ResetApprove(address indexed token, address indexed caller);
     
     constructor (address executor) Ownable(executor) {
 
@@ -79,6 +80,15 @@ contract TransitAggregateBridgeV5 is Ownable {
             _caller_allowed[callers[i]] = !_caller_allowed[callers[i]];
         }
         emit ChangeCallerAllowed(callers);
+    }
+
+    function resetApprove(address[] calldata callers, address[] calldata tokens) public onlyExecutor {
+        require(callers.length == tokens.length, "TransitAggregateBridgeV5: invalid data");
+        for (uint i; i < tokens.length; i++) {
+            _approves[tokens[i]][callers[i]] = false;
+            TransferHelper.safeApprove(tokens[i], callers[i], 0);
+            emit ResetApprove(tokens[i], callers[i]);
+        }
     }
 
     function callbytes(CallbytesDescription calldata desc) external payable {
