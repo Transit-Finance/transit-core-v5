@@ -69,15 +69,23 @@ contract UniswapV3Router is BaseCore {
         require(_wrapped_allowed[params.wrappedToken], "Invalid wrapped address");
         address tokenIn = params.srcToken;
         address tokenOut = params.dstToken;
-        uint256 actualAmountIn = calculateTradeFee(true, params.amount, params.fee, params.signature);
+
+        (bool isToVault, uint256 vaultFee) = splitFee(params.fee);
+        uint256 actualAmountIn = calculateTradeFee(true, params.amount, vaultFee, params.signature);
         uint256 toBeforeBalance;
         bool isToETH;
         if (TransferHelper.isETH(params.srcToken)) {
             tokenIn = params.wrappedToken;
             require(msg.value == params.amount, "Invalid msg.value");
+            if (isToVault) {
+                TransferHelper.safeTransferETH(_vault, vaultFee);
+            }
             TransferHelper.safeDeposit(params.wrappedToken, actualAmountIn);
         } else {
             TransferHelper.safeTransferFrom(params.srcToken, msg.sender, address(this), params.amount);
+            if (isToVault) {
+                TransferHelper.safeTransferWithoutRequire(params.srcToken, _vault, vaultFee);
+            }
         }
 
         if (TransferHelper.isETH(params.dstToken)) {

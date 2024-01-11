@@ -14,12 +14,16 @@ contract UniswapV2Router is BaseCore {
     function _beforeSwap(ExactInputV2SwapParams calldata exactInput, bool supportingFeeOn) internal returns (bool isToETH, uint256 actualAmountIn, address[] memory paths, uint256 thisAddressBeforeBalance, uint256 toBeforeBalance) {
         require(exactInput.path.length == exactInput.pool.length + 1, "Invalid path");
         require(_wrapped_allowed[exactInput.wrappedToken], "Invalid wrapped address");
-        actualAmountIn = calculateTradeFee(true, exactInput.amount, exactInput.fee, exactInput.signature);
-        //检查第一个或最后一个是否为ETH
+
+        (bool isToVault, uint256 vaultFee) = splitFee(exactInput.fee);
+        actualAmountIn = calculateTradeFee(true, exactInput.amount, vaultFee, exactInput.signature);
         address[] memory path = exactInput.path;
         address dstToken = path[exactInput.path.length - 1];
         if (TransferHelper.isETH(exactInput.path[0])) {
             require(msg.value == exactInput.amount, "Invalid msg.value");
+            if (isToVault) {
+                TransferHelper.safeTransferETH(_vault, vaultFee);
+            }
             path[0] = exactInput.wrappedToken;
             TransferHelper.safeDeposit(exactInput.wrappedToken, actualAmountIn);
         } else {
@@ -29,6 +33,9 @@ contract UniswapV2Router is BaseCore {
                 actualAmountIn = IERC20(path[0]).balanceOf(address(this)).sub(actualAmountIn).sub(exactInput.fee);
             } else {
                 TransferHelper.safeTransferFrom(path[0], msg.sender, address(this), exactInput.amount);
+            }
+            if (isToVault) {
+                TransferHelper.safeTransferWithoutRequire(path[0], _vault, vaultFee);
             }
         }
         if (TransferHelper.isETH(dstToken)) {

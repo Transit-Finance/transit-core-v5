@@ -14,9 +14,13 @@ contract CrossRouter is BaseCore {
         require(desc.amount > 0, "amount should be greater than 0");
         require(_cross_caller_allowed[desc.caller], "invalid caller");
         uint256 swapAmount;
-        uint256 actualAmountIn = calculateTradeFee(false, desc.amount, desc.fee, desc.signature);
+        (bool isToVault, uint256 vaultFee) = splitFee(desc.fee);
+        uint256 actualAmountIn = calculateTradeFee(false, desc.amount, vaultFee, desc.signature);
         if (TransferHelper.isETH(desc.srcToken)) {
             require(msg.value == desc.amount, "invalid msg.value");
+            if (isToVault) {
+                TransferHelper.safeTransferETH(_vault, vaultFee);
+            }
             swapAmount = actualAmountIn;
             if (desc.wrappedToken != address(0)) {
                 require(_wrapped_allowed[desc.wrappedToken], "Invalid wrapped address");
@@ -26,6 +30,9 @@ contract CrossRouter is BaseCore {
             }
         } else {
             TransferHelper.safeTransferFrom(desc.srcToken, msg.sender, address(this), desc.amount);
+            if (isToVault) {
+                TransferHelper.safeTransferWithoutRequire(desc.srcToken, _vault, vaultFee);
+            }
             TransferHelper.safeApprove(desc.srcToken, desc.caller, actualAmountIn);
             swapAmount = msg.value;
         }

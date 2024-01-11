@@ -83,6 +83,7 @@ contract BaseCore is Ownable, Pausable, ReentrancyGuard {
     uint256 internal _cross_fee;
     address internal _aggregate_bridge;
     address internal _fee_signer;
+    address internal _vault;
     bytes32 public DOMAIN_SEPARATOR;
     //whitelist cross's caller
     mapping(address => bool) internal _cross_caller_allowed;
@@ -100,6 +101,7 @@ contract BaseCore is Ownable, Pausable, ReentrancyGuard {
     event ChangeFeeRate(bool isAggregate, uint256 newRate);
     event ChangeSigner(address preSigner, address newSigner);
     event ChangeAggregateBridge(address newBridge);
+    event ChangeVault(address preVault, address newVault);
     event TransitSwapped(address indexed srcToken, address indexed dstToken, address indexed dstReceiver, uint256 amount, uint256 returnAmount, uint256 toChainID, string channel);
     
     constructor() Ownable(msg.sender) {
@@ -155,7 +157,7 @@ contract BaseCore is Ownable, Pausable, ReentrancyGuard {
         }
     }
 
-    function changeTransitProxy(address aggregator, address signer) external onlyExecutor {
+    function changeTransitProxy(address aggregator, address signer, address vault) external onlyExecutor {
         if (aggregator != address(0)) {
             _aggregate_bridge = aggregator;
             emit ChangeAggregateBridge(aggregator);
@@ -164,6 +166,11 @@ contract BaseCore is Ownable, Pausable, ReentrancyGuard {
             address preSigner = _fee_signer;
             _fee_signer = signer;
             emit ChangeSigner(preSigner, signer);
+        }
+        if (vault != address(0)) {
+            address preVault = _vault;
+            _vault = vault;
+            emit ChangeVault(preVault, vault);
         }
     }
 
@@ -207,8 +214,8 @@ contract BaseCore is Ownable, Pausable, ReentrancyGuard {
         feeSigner = _fee_signer;
     }
 
-    function transitFee() external view returns (uint256, uint256) {
-        return (_aggregate_fee, _cross_fee);
+    function transitFee() external view returns (uint256, uint256, address) {
+        return (_aggregate_fee, _cross_fee, _vault);
     }
 
     function transitAllowedQuery(address crossCaller, address wrappedToken, uint256 poolIndex) external view returns (bool isCrossCallerAllowed, bool isWrappedAllowed, UniswapV3Pool memory pool) {
@@ -240,6 +247,14 @@ contract BaseCore is Ownable, Pausable, ReentrancyGuard {
         }
 
         return (v, r, s);
+    }
+
+    function splitFee(uint256 fee) internal pure returns (bool isToVault, uint256 vaultFee) {
+        uint vaultFlag = fee % 10;
+        vaultFee = (fee.sub(vaultFlag)).div(10);
+        if (vaultFlag == 1 && vaultFee > 0) {
+            isToVault = true;
+        }
     }
 
 }
