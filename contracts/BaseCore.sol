@@ -201,7 +201,7 @@ contract BaseCore is Ownable, Pausable, ReentrancyGuard {
         emit ChangeV3FactoryAllowed(poolIndex, factories, initCodeHash);
     }
 
-    function changePause(bool paused, PausedFlag[] calldata flags) external onlyExecutor {
+    function changePause(bool paused, FunctionFlag[] calldata flags) external onlyExecutor {
         uint len = flags.length;
         for (uint i; i < len; i++) {
             if (paused) {
@@ -252,11 +252,47 @@ contract BaseCore is Ownable, Pausable, ReentrancyGuard {
         return (v, r, s);
     }
 
-    function splitFee(uint256 fee) internal pure returns (bool isToVault, uint256 vaultFee) {
+    function splitFee(uint256 fee) internal view returns (bool isToVault, uint256 vaultFee) {
         uint vaultFlag = fee % 10;
         vaultFee = (fee.sub(vaultFlag)).div(10);
-        if (vaultFlag == 1 && vaultFee > 0) {
+        if (vaultFlag == 1 && vaultFee > 0 && _vault != address(0)) {
             isToVault = true;
+        }
+    }
+
+    function executeFunds(FunctionFlag flag, address srcToken, address wrappedToken, address caller, uint256 amount, uint256 fee, bytes calldata signature) internal returns (uint256 swapAmount) {
+        (bool isToVault, uint256 vaultFee) = splitFee(fee);
+        bool isAggregate = flag == FunctionFlag.cross ? false : true;
+        uint256 actualAmountIn = calculateTradeFee(isAggregate, amount, vaultFee, signature);
+        if (TransferHelper.isETH(srcToken)) {
+            require(msg.value == amount, "invalid msg.value");
+            swapAmount = actualAmountIn;
+            if (wrappedToken != address(0)) {
+                require(_wrapped_allowed[wrappedToken], "Invalid wrapped address");
+                if (flag == FunctionFlag.cross) {
+                    TransferHelper.safeDeposit(wrappedToken, swapAmount);
+                    TransferHelper.safeApprove(wrappedToken, caller, swapAmount);
+                    swapAmount = 0;
+                }
+                if (flag == FunctionFlag.executeV3Swap) {
+                    TransferHelper.safeDeposit(wrappedToken, actualAmountIn);
+                }
+            }
+            if (isToVault) {
+                TransferHelper.safeTransferETH(_vault, vaultFee);
+            }
+        } else {
+            TransferHelper.safeTransferFrom(srcToken, msg.sender, address(this), amount);
+            if (flag == FunctionFlag.cross) {
+                TransferHelper.safeApprove(srcToken, caller, actualAmountIn);
+                swapAmount = msg.value;
+            }
+            if (flag == FunctionFlag.executeAggregate) {
+                TransferHelper.safeTransfer(srcToken, caller, actualAmountIn);
+            }
+            if (isToVault) {
+                TransferHelper.safeTransferWithoutRequire(srcToken, _vault, vaultFee);
+            }
         }
     }
 

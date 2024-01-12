@@ -60,7 +60,7 @@ contract UniswapV2Router is BaseCore {
         returnAmount = _executeV2Swap(exactInput, deadline);
     }
 
-    function _executeV2Swap(ExactInputV2SwapParams calldata exactInput, uint256 deadline) internal nonReentrant whenNotPaused(PausedFlag.executeV2Swap) returns (uint256 returnAmount) {
+    function _executeV2Swap(ExactInputV2SwapParams calldata exactInput, uint256 deadline) internal nonReentrant whenNotPaused(FunctionFlag.executeV2Swap) returns (uint256 returnAmount) {
         require(deadline >= block.timestamp, "Expired");
         
         bool supportingFeeOn = exactInput.router >> 248 & 0xf == 1;
