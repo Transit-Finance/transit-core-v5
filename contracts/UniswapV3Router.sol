@@ -63,22 +63,19 @@ contract UniswapV3Router is BaseCore {
         returnAmount = _executeV3Swap(params);
     }
 
-    function _executeV3Swap(ExactInputV3SwapParams calldata params) internal nonReentrant whenNotPaused returns (uint256 returnAmount) {
+    function _executeV3Swap(ExactInputV3SwapParams calldata params) internal nonReentrant whenNotPaused(FunctionFlag.executeV3Swap) returns (uint256 returnAmount) {
         require(params.pools.length > 0, "Empty pools");
         require(params.deadline >= block.timestamp, "Expired");
         require(_wrapped_allowed[params.wrappedToken], "Invalid wrapped address");
         address tokenIn = params.srcToken;
         address tokenOut = params.dstToken;
-        uint256 actualAmountIn = calculateTradeFee(true, params.amount, params.fee, params.signature);
+
         uint256 toBeforeBalance;
         bool isToETH;
         if (TransferHelper.isETH(params.srcToken)) {
             tokenIn = params.wrappedToken;
-            require(msg.value == params.amount, "Invalid msg.value");
-            TransferHelper.safeDeposit(params.wrappedToken, actualAmountIn);
-        } else {
-            TransferHelper.safeTransferFrom(params.srcToken, msg.sender, address(this), params.amount);
         }
+        uint256 actualAmountIn = executeFunds(FunctionFlag.executeV3Swap, params.srcToken, params.wrappedToken, address(0), params.amount, params.fee, params.signature);
 
         if (TransferHelper.isETH(params.dstToken)) {
             tokenOut = params.wrappedToken;

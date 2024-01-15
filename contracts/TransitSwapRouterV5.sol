@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.0;
+pragma solidity =0.8.20;
 
 import "./UniswapV2Router.sol";
 import "./UniswapV3Router.sol";
@@ -7,6 +7,8 @@ import "./AggregateRouter.sol";
 import "./CrossRouter.sol";
 
 contract TransitSwapRouterV5 is UniswapV2Router, UniswapV3Router, AggregateRouter, CrossRouter  {
+
+    string constant public version = "TransitSwap V5.1";
 
     function withdrawTokens(address[] memory tokens, address recipient) external onlyExecutor {
         for (uint index; index < tokens.length; index++) {

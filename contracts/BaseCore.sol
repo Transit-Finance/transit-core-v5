@@ -83,6 +83,7 @@ contract BaseCore is Ownable, Pausable, ReentrancyGuard {
     uint256 internal _cross_fee;
     address internal _aggregate_bridge;
     address internal _fee_signer;
+    address internal _vault;
     bytes32 public DOMAIN_SEPARATOR;
     //whitelist cross's caller
     mapping(address => bool) internal _cross_caller_allowed;
@@ -100,6 +101,7 @@ contract BaseCore is Ownable, Pausable, ReentrancyGuard {
     event ChangeFeeRate(bool isAggregate, uint256 newRate);
     event ChangeSigner(address preSigner, address newSigner);
     event ChangeAggregateBridge(address newBridge);
+    event ChangeVault(address preVault, address newVault);
     event TransitSwapped(address indexed srcToken, address indexed dstToken, address indexed dstReceiver, uint256 amount, uint256 returnAmount, uint256 toChainID, string channel);
     
     constructor() Ownable(msg.sender) {
@@ -155,7 +157,7 @@ contract BaseCore is Ownable, Pausable, ReentrancyGuard {
         }
     }
 
-    function changeTransitProxy(address aggregator, address signer) external onlyExecutor {
+    function changeTransitProxy(address aggregator, address signer, address vault) external onlyExecutor {
         if (aggregator != address(0)) {
             _aggregate_bridge = aggregator;
             emit ChangeAggregateBridge(aggregator);
@@ -164,6 +166,11 @@ contract BaseCore is Ownable, Pausable, ReentrancyGuard {
             address preSigner = _fee_signer;
             _fee_signer = signer;
             emit ChangeSigner(preSigner, signer);
+        }
+        if (vault != address(0)) {
+            address preVault = _vault;
+            _vault = vault;
+            emit ChangeVault(preVault, vault);
         }
     }
 
@@ -194,11 +201,14 @@ contract BaseCore is Ownable, Pausable, ReentrancyGuard {
         emit ChangeV3FactoryAllowed(poolIndex, factories, initCodeHash);
     }
 
-    function changePause(bool paused) external onlyExecutor {
-        if (paused) {
-            _pause();
-        } else {
-            _unpause();
+    function changePause(bool paused, FunctionFlag[] calldata flags) external onlyExecutor {
+        uint len = flags.length;
+        for (uint i; i < len; i++) {
+            if (paused) {
+                _pause(flags[i]);
+            } else {
+                _unpause(flags[i]);
+            }
         }
     }
 
@@ -207,8 +217,8 @@ contract BaseCore is Ownable, Pausable, ReentrancyGuard {
         feeSigner = _fee_signer;
     }
 
-    function transitFee() external view returns (uint256, uint256) {
-        return (_aggregate_fee, _cross_fee);
+    function transitFee() external view returns (uint256, uint256, address) {
+        return (_aggregate_fee, _cross_fee, _vault);
     }
 
     function transitAllowedQuery(address crossCaller, address wrappedToken, uint256 poolIndex) external view returns (bool isCrossCallerAllowed, bool isWrappedAllowed, UniswapV3Pool memory pool) {
@@ -240,6 +250,50 @@ contract BaseCore is Ownable, Pausable, ReentrancyGuard {
         }
 
         return (v, r, s);
+    }
+
+    function splitFee(uint256 fee) internal view returns (bool isToVault, uint256 vaultFee) {
+        uint vaultFlag = fee % 10;
+        vaultFee = (fee.sub(vaultFlag)).div(10);
+        if (vaultFlag == 1 && vaultFee > 0 && _vault != address(0)) {
+            isToVault = true;
+        }
+    }
+
+    function executeFunds(FunctionFlag flag, address srcToken, address wrappedToken, address caller, uint256 amount, uint256 fee, bytes calldata signature) internal returns (uint256 swapAmount) {
+        (bool isToVault, uint256 vaultFee) = splitFee(fee);
+        bool isAggregate = flag == FunctionFlag.cross ? false : true;
+        uint256 actualAmountIn = calculateTradeFee(isAggregate, amount, vaultFee, signature);
+        if (TransferHelper.isETH(srcToken)) {
+            require(msg.value == amount, "invalid msg.value");
+            swapAmount = actualAmountIn;
+            if (wrappedToken != address(0)) {
+                require(_wrapped_allowed[wrappedToken], "Invalid wrapped address");
+                if (flag == FunctionFlag.cross) {
+                    TransferHelper.safeDeposit(wrappedToken, swapAmount);
+                    TransferHelper.safeApprove(wrappedToken, caller, swapAmount);
+                    swapAmount = 0;
+                }
+                if (flag == FunctionFlag.executeV3Swap) {
+                    TransferHelper.safeDeposit(wrappedToken, actualAmountIn);
+                }
+            }
+            if (isToVault) {
+                TransferHelper.safeTransferETH(_vault, vaultFee);
+            }
+        } else {
+            TransferHelper.safeTransferFrom(srcToken, msg.sender, address(this), amount);
+            if (flag == FunctionFlag.cross) {
+                TransferHelper.safeApprove(srcToken, caller, actualAmountIn);
+                swapAmount = msg.value;
+            }
+            if (flag == FunctionFlag.executeAggregate) {
+                TransferHelper.safeTransfer(srcToken, caller, actualAmountIn);
+            }
+            if (isToVault) {
+                TransferHelper.safeTransferWithoutRequire(srcToken, _vault, vaultFee);
+            }
+        }
     }
 
 }

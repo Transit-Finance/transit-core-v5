@@ -21,24 +21,16 @@ contract AggregateRouter is BaseCore {
         returnAmount = _executeAggregate(desc, callbytesDesc);
     }
 
-    function _executeAggregate(TransitSwapDescription calldata desc, CallbytesDescription calldata callbytesDesc) internal nonReentrant whenNotPaused returns (uint256 returnAmount) {
+    function _executeAggregate(TransitSwapDescription calldata desc, CallbytesDescription calldata callbytesDesc) internal nonReentrant whenNotPaused(FunctionFlag.executeAggregate) returns (uint256 returnAmount) {
         require(callbytesDesc.calldatas.length > 0, "data should be not zero");
         require(desc.amount > 0, "amount should be greater than 0");
         require(desc.dstReceiver != address(0), "receiver should be not address(0)");
         require(desc.minReturnAmount > 0, "minReturnAmount should be greater than 0");
         require(_wrapped_allowed[desc.wrappedToken], "invalid wrapped address");
 
-        uint256 actualAmountIn = calculateTradeFee(true, desc.amount, desc.fee, desc.signature);
-        uint256 swapAmount;
         uint256 toBeforeBalance;
         address bridgeAddress = _aggregate_bridge;
-        if (TransferHelper.isETH(desc.srcToken)) {
-            require(msg.value == desc.amount, "invalid msg.value");
-            swapAmount = actualAmountIn;
-        } else {
-            TransferHelper.safeTransferFrom(desc.srcToken, msg.sender, address(this), desc.amount);
-            TransferHelper.safeTransfer(desc.srcToken, bridgeAddress, actualAmountIn);
-        }
+        uint256 swapAmount = executeFunds(FunctionFlag.executeAggregate, desc.srcToken, desc.wrappedToken, bridgeAddress, desc.amount, desc.fee, desc.signature);
 
         if (TransferHelper.isETH(desc.dstToken)) {
             toBeforeBalance = desc.dstReceiver.balance;
