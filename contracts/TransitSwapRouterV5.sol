@@ -8,8 +8,6 @@ import "./CrossRouter.sol";
 
 contract TransitSwapRouterV5 is UniswapV2Router, UniswapV3Router, AggregateRouter, CrossRouter  {
 
-    string constant public version = "TransitSwap V5.1";
-
     function withdrawTokens(address[] memory tokens, address recipient) external onlyExecutor {
         for (uint index; index < tokens.length; index++) {
             uint amount;
