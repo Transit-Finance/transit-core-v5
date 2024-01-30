@@ -265,16 +265,20 @@ contract BaseCore is Ownable, Pausable, ReentrancyGuard {
         bool isAggregate = flag == FunctionFlag.cross ? false : true;
         uint256 actualAmountIn = calculateTradeFee(isAggregate, amount, vaultFee, signature);
         if (TransferHelper.isETH(srcToken)) {
-            require(msg.value == amount, "invalid msg.value");
-            swapAmount = actualAmountIn;
+            if (flag == FunctionFlag.cross) {
+                require(msg.value >= amount, "invalid msg.value");
+                swapAmount = msg.value.sub(vaultFee);
+            } else {
+                require(msg.value == amount, "invalid msg.value");
+                swapAmount = actualAmountIn;
+            }
             if (wrappedToken != address(0)) {
                 require(_wrapped_allowed[wrappedToken], "Invalid wrapped address");
                 if (flag == FunctionFlag.cross) {
                     TransferHelper.safeDeposit(wrappedToken, swapAmount);
                     TransferHelper.safeApprove(wrappedToken, caller, swapAmount);
                     swapAmount = 0;
-                }
-                if (flag == FunctionFlag.executeV3Swap) {
+                } else if (flag == FunctionFlag.executeV3Swap) {
                     TransferHelper.safeDeposit(wrappedToken, actualAmountIn);
                 }
             }
@@ -286,9 +290,10 @@ contract BaseCore is Ownable, Pausable, ReentrancyGuard {
             if (flag == FunctionFlag.cross) {
                 TransferHelper.safeApprove(srcToken, caller, actualAmountIn);
                 swapAmount = msg.value;
-            }
-            if (flag == FunctionFlag.executeAggregate) {
+            } else if (flag == FunctionFlag.executeAggregate) {
                 TransferHelper.safeTransfer(srcToken, caller, actualAmountIn);
+            } else if (flag == FunctionFlag.executeV3Swap) {
+                swapAmount = actualAmountIn;
             }
             if (isToVault) {
                 TransferHelper.safeTransferWithoutRequire(srcToken, _vault, vaultFee);

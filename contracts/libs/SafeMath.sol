@@ -2,9 +2,6 @@
 pragma solidity >=0.6.0;
 
 library SafeMath {
-    function add(uint x, uint y) internal pure returns (uint z) {
-        require((z = x + y) >= x, 'ds-math-add-overflow');
-    }
 
     function sub(uint x, uint y) internal pure returns (uint z) {
         require((z = x - y) <= x, 'ds-math-sub-underflow');
