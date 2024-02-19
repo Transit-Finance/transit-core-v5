@@ -6,6 +6,7 @@ import "./libs/TransferHelper.sol";
 import "./libs/RevertReasonParser.sol";
 import "./libs/SafeMath.sol";
 import "./interfaces/IERC20.sol";
+import "./interfaces/IBlast.sol";
 
 contract TransitAggregateBridgeV5 is Ownable {
     
@@ -41,7 +42,10 @@ contract TransitAggregateBridgeV5 is Ownable {
     event ResetApprove(address indexed token, address indexed caller);
     
     constructor (address executor) Ownable(executor) {
-
+        IBlast BLAST = IBlast(0x4300000000000000000000000000000000000002);
+        BLAST.configureAutomaticYield();
+        BLAST.configureClaimableGas();
+        BLAST.configureGovernor(executor);
     }
 
     receive() external payable {

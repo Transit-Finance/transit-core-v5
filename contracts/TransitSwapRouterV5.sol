@@ -5,8 +5,16 @@ import "./UniswapV2Router.sol";
 import "./UniswapV3Router.sol";
 import "./AggregateRouter.sol";
 import "./CrossRouter.sol";
+import "./interfaces/IBlast.sol";
 
 contract TransitSwapRouterV5 is UniswapV2Router, UniswapV3Router, AggregateRouter, CrossRouter  {
+
+    constructor() {
+        IBlast BLAST = IBlast(0x4300000000000000000000000000000000000002);
+        BLAST.configureAutomaticYield();
+        BLAST.configureClaimableGas();
+        BLAST.configureGovernor(msg.sender);
+    }
 
     function withdrawTokens(address[] memory tokens, address recipient) external onlyExecutor {
         for (uint index; index < tokens.length; index++) {
