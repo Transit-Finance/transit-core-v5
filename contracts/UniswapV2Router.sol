@@ -84,7 +84,7 @@ contract UniswapV2Router is BaseCore {
                     returnAmount = IERC20(exactInput.wrappedToken).balanceOf(address(this)).sub(thisAddressBeforeBalance);
                 } else {
                     _swap(amounts, paths, exactInput.pool, exactInput.dstReceiver);
-                    returnAmount = amounts[amounts.length - 1];
+                    returnAmount = IERC20(paths[paths.length - 1]).balanceOf(exactInput.dstReceiver).sub(toBeforeBalance);
                 }
             }
 
