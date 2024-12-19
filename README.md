@@ -27,6 +27,7 @@ Core smart contracts of TransitSwap v5
 
 [Fantom](https://ftmscan.com/address/0x07964f135f276412b3182a3b2407b8dd45000000) EVM Version: pairs,Runs: 100
 
+[Sonic](https://sonicscan.org/address/0x07964f135f276412b3182a3B2407b8dd45000000)
 
 
 # Audit Report
